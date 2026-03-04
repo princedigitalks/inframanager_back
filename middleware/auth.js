@@ -1,23 +1,19 @@
 const jwt = require("jsonwebtoken");
-const STAFF = require("../model/staff");
 
-async function authMiddleware(req, res, next) {
-  const token = req.headers.authorization?.split(" ")[1];
-  if (!token) {
-    return res.status(401).json({ status: "Fail", message: "No token" });
-  }
-
+const auth = (req, res, next) => {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
-    const staffVerify = await STAFF.findById(decoded.id).populate("role");
-    if (!staffVerify) {
-      return res.status(401).json({ status: "Fail", message: "Invalid token" });
+    const token = req.header("Authorization")?.replace("Bearer ", "");
+    
+    if (!token) {
+      return res.status(401).json({ success: false, message: "Authentication required" });
     }
-    req.user = staffVerify;
-    next();
-  } catch (err) {
-    res.status(401).json({ status: "Fail", message: "Invalid token" });
-  }
-}
 
-module.exports = authMiddleware;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    res.status(401).json({ success: false, message: "Invalid token" });
+  }
+};
+
+module.exports = auth;

@@ -1,6 +1,6 @@
 const CryptoJS = require("crypto-js");
 
-const SECRET_KEY = process.env.CRYPTO_SECRET_KEY;
+const SECRET_KEY = process.env.CRYPTO_SECRET;
 
 /**
  * Encrypt any data (string / object)
