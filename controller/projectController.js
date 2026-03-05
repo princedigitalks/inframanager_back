@@ -2,14 +2,25 @@ const Project = require("../model/Project");
 const Log = require("../model/Log");
 const { encryptData, decryptData } = require("../utils/crypto");
 
-const encryptFields = ['port', 'projectPath', 'nginxConfig', 'nginxContent', 'nginxDescription', 'envFile', 'envContent', 'envDescription', 'pm2Name', 'pm2Description'];
+const encryptFields = ['projectPath', 'nginxConfig', 'nginxContent', 'nginxDescription', 
+  'adminPanel.port', 'adminPanel.envFile', 'adminPanel.envContent', 'adminPanel.envDescription', 'adminPanel.pm2Name', 'adminPanel.pm2Description',
+  'backend.port', 'backend.envFile', 'backend.envContent', 'backend.envDescription', 'backend.pm2Name', 'backend.pm2Description',
+  'website.port', 'website.envFile', 'website.envContent', 'website.envDescription', 'website.pm2Name', 'website.pm2Description'
+];
 
 exports.createProject = async (req, res) => {
   try {
     const projectData = { ...req.body };
     encryptFields.forEach(field => {
-      if (projectData[field] != null && projectData[field] !== '') {
-        projectData[field] = encryptData(String(projectData[field]));
+      const keys = field.split('.');
+      if (keys.length === 2) {
+        if (projectData[keys[0]] && projectData[keys[0]][keys[1]] != null && projectData[keys[0]][keys[1]] !== '') {
+          projectData[keys[0]][keys[1]] = encryptData(String(projectData[keys[0]][keys[1]]));
+        }
+      } else {
+        if (projectData[field] != null && projectData[field] !== '') {
+          projectData[field] = encryptData(String(projectData[field]));
+        }
       }
     });
     const project = await Project.create(projectData);
@@ -35,7 +46,9 @@ exports.getProjects = async (req, res) => {
     if (status) query.status = status;
     if (search) query.$or = [
       { name: { $regex: search, $options: "i" } },
-      { domain: { $regex: search, $options: "i" } }
+      { "adminPanel.domain": { $regex: search, $options: "i" } },
+      { "backend.domain": { $regex: search, $options: "i" } },
+      { "website.domain": { $regex: search, $options: "i" } }
     ];
 
     const projects = await Project.find(query)
@@ -66,7 +79,14 @@ exports.getProjectById = async (req, res) => {
     }
     const projectData = project.toObject();
     encryptFields.forEach(field => {
-      if (projectData[field]) projectData[field] = decryptData(projectData[field]);
+      const keys = field.split('.');
+      if (keys.length === 2) {
+        if (projectData[keys[0]] && projectData[keys[0]][keys[1]]) {
+          projectData[keys[0]][keys[1]] = decryptData(projectData[keys[0]][keys[1]]);
+        }
+      } else {
+        if (projectData[field]) projectData[field] = decryptData(projectData[field]);
+      }
     });
     res.json({ success: true, data: projectData });
   } catch (error) {
@@ -78,8 +98,15 @@ exports.updateProject = async (req, res) => {
   try {
     const updateData = { ...req.body };
     encryptFields.forEach(field => {
-      if (updateData[field] != null && updateData[field] !== '') {
-        updateData[field] = encryptData(String(updateData[field]));
+      const keys = field.split('.');
+      if (keys.length === 2) {
+        if (updateData[keys[0]] && updateData[keys[0]][keys[1]] != null && updateData[keys[0]][keys[1]] !== '') {
+          updateData[keys[0]][keys[1]] = encryptData(String(updateData[keys[0]][keys[1]]));
+        }
+      } else {
+        if (updateData[field] != null && updateData[field] !== '') {
+          updateData[field] = encryptData(String(updateData[field]));
+        }
       }
     });
     const project = await Project.findByIdAndUpdate(req.params.id, updateData, {
@@ -133,7 +160,15 @@ exports.decryptProjectData = async (req, res) => {
     }
     const decryptedData = {};
     encryptFields.forEach(field => {
-      if (project[field]) decryptedData[field] = decryptData(project[field]);
+      const keys = field.split('.');
+      if (keys.length === 2) {
+        if (project[keys[0]] && project[keys[0]][keys[1]]) {
+          if (!decryptedData[keys[0]]) decryptedData[keys[0]] = {};
+          decryptedData[keys[0]][keys[1]] = decryptData(project[keys[0]][keys[1]]);
+        }
+      } else {
+        if (project[field]) decryptedData[field] = decryptData(project[field]);
+      }
     });
     res.json({ success: true, data: decryptedData });
   } catch (error) {
