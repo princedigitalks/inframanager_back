@@ -16,6 +16,8 @@ exports.login = async (req, res) => {
     }
 
     const decryptedPassword = decryptData(user.password);
+    console.log(user.password);
+
     if (String(decryptedPassword) !== password) {
       return res
         .status(401)

@@ -5,7 +5,7 @@ const projectSchema = new mongoose.Schema({
   domain: { type: String, required: true },
   server: { type: mongoose.Schema.Types.ObjectId, ref: "Server", required: true },
   technology: { type: String },
-  port: { type: Number },
+  port: { type: String },
   status: { type: String, enum: ["running", "stopped", "maintenance"], default: "running" },
   description: { type: String },
   projectPath: { type: String },

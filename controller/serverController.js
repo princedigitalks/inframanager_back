@@ -43,9 +43,15 @@ exports.getServers = async (req, res) => {
 
     const count = await Server.countDocuments(query);
 
+    const serversWithEncrypted = servers.map(s => ({
+      ...s.toObject(),
+      usernameEncrypted: s.username,
+      passwordEncrypted: s.password
+    }));
+
     res.json({
       success: true,
-      data: servers,
+      data: serversWithEncrypted,
       totalPages: Math.ceil(count / limit),
       currentPage: page,
       total: count
@@ -115,6 +121,24 @@ exports.deleteServer = async (req, res) => {
       }).catch(err => console.error('Log creation failed:', err));
     }
     res.json({ success: true, message: "Server deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.decryptCredentials = async (req, res) => {
+  try {
+    const server = await Server.findById(req.params.id);
+    if (!server) {
+      return res.status(404).json({ success: false, message: "Server not found" });
+    }
+    res.json({ 
+      success: true, 
+      data: { 
+        username: decryptData(server.username), 
+        password: decryptData(server.password) 
+      } 
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

@@ -1,9 +1,18 @@
 const Project = require("../model/Project");
 const Log = require("../model/Log");
+const { encryptData, decryptData } = require("../utils/crypto");
+
+const encryptFields = ['port', 'projectPath', 'nginxConfig', 'nginxContent', 'nginxDescription', 'envFile', 'envContent', 'envDescription', 'pm2Name', 'pm2Description'];
 
 exports.createProject = async (req, res) => {
   try {
-    const project = await Project.create(req.body);
+    const projectData = { ...req.body };
+    encryptFields.forEach(field => {
+      if (projectData[field] != null && projectData[field] !== '') {
+        projectData[field] = encryptData(String(projectData[field]));
+      }
+    });
+    const project = await Project.create(projectData);
     if (req.user && req.user.id) {
       await Log.create({
         action: "CREATE_PROJECT",
@@ -55,7 +64,11 @@ exports.getProjectById = async (req, res) => {
     if (!project) {
       return res.status(404).json({ success: false, message: "Project not found" });
     }
-    res.json({ success: true, data: project });
+    const projectData = project.toObject();
+    encryptFields.forEach(field => {
+      if (projectData[field]) projectData[field] = decryptData(projectData[field]);
+    });
+    res.json({ success: true, data: projectData });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -63,7 +76,13 @@ exports.getProjectById = async (req, res) => {
 
 exports.updateProject = async (req, res) => {
   try {
-    const project = await Project.findByIdAndUpdate(req.params.id, req.body, {
+    const updateData = { ...req.body };
+    encryptFields.forEach(field => {
+      if (updateData[field] != null && updateData[field] !== '') {
+        updateData[field] = encryptData(String(updateData[field]));
+      }
+    });
+    const project = await Project.findByIdAndUpdate(req.params.id, updateData, {
       new: true,
       runValidators: true
     }).populate("server");
@@ -101,6 +120,22 @@ exports.deleteProject = async (req, res) => {
       }).catch(err => console.error('Log creation failed:', err));
     }
     res.json({ success: true, message: "Project deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.decryptProjectData = async (req, res) => {
+  try {
+    const project = await Project.findById(req.params.id);
+    if (!project) {
+      return res.status(404).json({ success: false, message: "Project not found" });
+    }
+    const decryptedData = {};
+    encryptFields.forEach(field => {
+      if (project[field]) decryptedData[field] = decryptData(project[field]);
+    });
+    res.json({ success: true, data: decryptedData });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
